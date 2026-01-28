@@ -1,0 +1,16 @@
+# Tushare 配置
+TUSHARE_TOKEN = 'cd0bc6da6225c7e7d6b829f75da3a88e25ad4d4dd42090e74c2c4dfd'
+
+# Flask 配置
+DEBUG = True
+HOST = '0.0.0.0'
+PORT = 5000
+
+# Redis 配置
+REDIS_HOST = '127.0.0.1'
+REDIS_PORT = 6379
+REDIS_DB = 0
+REDIS_DECODE_RESPONSES = True
+
+# 缓存过期时间（秒）
+CACHE_EXPIRE_TIME = 3600  # 1小时
