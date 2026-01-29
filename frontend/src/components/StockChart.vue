@@ -47,52 +47,6 @@
 
     <!-- 图表容器 -->
     <div ref="chartContainer" class="chart-container"></div>
-
-    <!-- 悬停详情面板 -->
-    <transition name="fade">
-      <div v-if="hoverData" class="hover-panel">
-        <div class="hover-date">{{ hoverData.dateLabel }}</div>
-        <div class="hover-grid">
-          <div class="hover-item">
-            <span class="hover-label">涨跌</span>
-            <span :class="['hover-value', hoverData.change >= 0 ? 'positive' : 'negative']">
-              {{ hoverData.change >= 0 ? '+' : '' }}{{ hoverData.change }} 
-              ({{ hoverData.changePct >= 0 ? '+' : '' }}{{ hoverData.changePct }}%)
-            </span>
-          </div>
-          <div class="hover-item">
-            <span class="hover-label">资金</span>
-            <span :class="['hover-value', hoverData.moneyFlow >= 0 ? 'positive' : 'negative']">
-              {{ hoverData.moneyFlow >= 0 ? '流入' : '流出' }} {{ formatNumber(Math.abs(hoverData.moneyFlow)) }}
-            </span>
-          </div>
-          <div class="hover-item">
-            <span class="hover-label">开盘</span>
-            <span class="hover-value">{{ hoverData.open }}</span>
-          </div>
-          <div class="hover-item">
-            <span class="hover-label">收盘</span>
-            <span class="hover-value">{{ hoverData.close }}</span>
-          </div>
-          <div class="hover-item">
-            <span class="hover-label">最高</span>
-            <span class="hover-value">{{ hoverData.high }}</span>
-          </div>
-          <div class="hover-item">
-            <span class="hover-label">最低</span>
-            <span class="hover-value">{{ hoverData.low }}</span>
-          </div>
-          <div class="hover-item">
-            <span class="hover-label">成交量</span>
-            <span class="hover-value">{{ formatNumber(hoverData.volume) }}</span>
-          </div>
-          <div class="hover-item">
-            <span class="hover-label">成交额</span>
-            <span class="hover-value">{{ formatNumber(hoverData.amount) }}</span>
-          </div>
-        </div>
-      </div>
-    </transition>
   </div>
 </template>
 
@@ -124,7 +78,6 @@ const emit = defineEmits(['update-change'])
 // 响应式数据
 const chartContainer = ref(null)
 const chartInstance = ref(null)
-const hoverData = ref(null)
 const currentChange = ref(null)
 
 // 工具函数：格式化数字
@@ -163,6 +116,80 @@ const initChart = () => {
   // 基础配置
   const option = {
     animation: false,
+    tooltip: {
+      trigger: 'axis',
+      axisPointer: {
+        type: 'cross',
+        crossStyle: {
+          color: '#999'
+        },
+        lineStyle: {
+          color: '#999',
+          type: 'dashed'
+        }
+      },
+      backgroundColor: 'rgba(255, 255, 255, 0.98)',
+      borderColor: '#d0d0d0',
+      borderWidth: 1,
+      padding: 12,
+      textStyle: {
+        color: '#2c3e50',
+        fontSize: 12
+      },
+      formatter: (params) => {
+        if (!params || params.length === 0) return ''
+        
+        const dataIndex = params[0].dataIndex
+        if (!props.stockData || dataIndex >= props.stockData.length) return ''
+        
+        const item = props.stockData[dataIndex]
+        const dateLabel = formatDate(item.date, props.freq)
+        
+        const change = item.change || 0
+        const changePct = item.change_pct || 0
+        const changeColor = change >= 0 ? '#ef232a' : '#14b143'
+        const changeSign = change >= 0 ? '+' : ''
+        
+        const moneyFlow = item.money_flow || 0
+        const moneyFlowColor = moneyFlow >= 0 ? '#ef232a' : '#14b143'
+        const moneyFlowLabel = moneyFlow >= 0 ? '流入' : '流出'
+        
+        return `
+          <div style="font-weight: 600; margin-bottom: 8px; padding-bottom: 6px; border-bottom: 1px solid #e8e8e8;">
+            ${dateLabel}
+          </div>
+          <div style="display: grid; grid-template-columns: auto 1fr; gap: 6px 12px;">
+            <span style="color: #7f8c8d;">涨跌</span>
+            <span style="color: ${changeColor}; font-weight: 500; text-align: right;">
+              ${changeSign}${change} (${changeSign}${changePct}%)
+            </span>
+            
+            <span style="color: #7f8c8d;">资金</span>
+            <span style="color: ${moneyFlowColor}; font-weight: 500; text-align: right;">
+              ${moneyFlowLabel} ${formatNumber(Math.abs(moneyFlow))}
+            </span>
+            
+            <span style="color: #7f8c8d;">开盘</span>
+            <span style="font-weight: 500; text-align: right;">${item.open}</span>
+            
+            <span style="color: #7f8c8d;">收盘</span>
+            <span style="font-weight: 500; text-align: right;">${item.close}</span>
+            
+            <span style="color: #7f8c8d;">最高</span>
+            <span style="font-weight: 500; text-align: right;">${item.high}</span>
+            
+            <span style="color: #7f8c8d;">最低</span>
+            <span style="font-weight: 500; text-align: right;">${item.low}</span>
+            
+            <span style="color: #7f8c8d;">成交量</span>
+            <span style="font-weight: 500; text-align: right;">${formatNumber(item.vol || 0)}</span>
+            
+            <span style="color: #7f8c8d;">成交额</span>
+            <span style="font-weight: 500; text-align: right;">${formatNumber(item.amount || 0)}</span>
+          </div>
+        `
+      }
+    },
     grid: [
       {
         left: '4%',
@@ -298,47 +325,32 @@ const initChart = () => {
 const bindChartEvents = () => {
   if (!chartInstance.value) return
   
-  // 鼠标移动事件
-  chartInstance.value.on('mousemove', (params) => {
+  // 鼠标移动事件 - 更新涨幅显示
+  chartInstance.value.on('mouseover', (params) => {
     if (params.componentType === 'series' && params.seriesName === 'K线') {
       const dataIndex = params.dataIndex
-      updateHoverData(dataIndex)
+      updateChangeFromHover(dataIndex)
     }
   })
   
   // 鼠标移出事件
   chartInstance.value.on('globalout', () => {
-    hoverData.value = null
     resetToTotalChange()
   })
   
   // 图表区域外的鼠标移出
   chartInstance.value.getZr().on('mouseout', (e) => {
     if (!e.target) {
-      hoverData.value = null
       resetToTotalChange()
     }
   })
 }
 
-// 更新悬停数据
-const updateHoverData = (dataIndex) => {
+// 更新悬停点的涨幅计算
+const updateChangeFromHover = (dataIndex) => {
   if (!props.stockData || dataIndex < 0 || dataIndex >= props.stockData.length) return
   
   const item = props.stockData[dataIndex]
-  
-  hoverData.value = {
-    dateLabel: formatDate(item.date, props.freq),
-    open: item.open,
-    close: item.close,
-    high: item.high,
-    low: item.low,
-    change: item.change || 0,
-    changePct: item.change_pct || 0,
-    volume: item.vol || 0,
-    amount: item.amount || 0,
-    moneyFlow: item.money_flow || 0
-  }
   
   // 计算从悬停点到最新的涨幅
   if (props.stockData.length > 0) {
@@ -528,71 +540,5 @@ defineExpose({
 .chart-container {
   width: 100%;
   height: 320px;
-}
-
-/* 悬停面板 */
-.hover-panel {
-  position: absolute;
-  top: 80px;
-  right: 24px;
-  background: rgba(255, 255, 255, 0.98);
-  border: 1px solid #d0d0d0;
-  border-radius: 6px;
-  padding: 12px;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
-  z-index: 1000;
-  min-width: 200px;
-}
-
-.hover-date {
-  font-size: 13px;
-  font-weight: 600;
-  color: #2c3e50;
-  margin-bottom: 8px;
-  padding-bottom: 6px;
-  border-bottom: 1px solid #e8e8e8;
-}
-
-.hover-grid {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 6px 12px;
-}
-
-.hover-item {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  gap: 8px;
-}
-
-.hover-label {
-  font-size: 11px;
-  color: #7f8c8d;
-  white-space: nowrap;
-}
-
-.hover-value {
-  font-size: 12px;
-  font-weight: 500;
-  color: #2c3e50;
-  text-align: right;
-}
-
-.hover-value.positive {
-  color: #ef232a;
-}
-
-.hover-value.negative {
-  color: #14b143;
-}
-
-/* 过渡动画 */
-.fade-enter-active, .fade-leave-active {
-  transition: opacity 0.2s ease;
-}
-
-.fade-enter-from, .fade-leave-to {
-  opacity: 0;
 }
 </style>
