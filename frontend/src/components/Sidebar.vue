@@ -1,85 +1,91 @@
 <template>
   <div class="sidebar">
     <div class="logo">
-      <h2>Tushare</h2>
+      <el-icon :size="32" color="#409EFF"><TrendCharts /></el-icon>
+      <span class="logo-text">CryptoTrade</span>
     </div>
-    <nav class="menu">
-      <div 
-        v-for="item in menuItems" 
-        :key="item.id"
-        :class="['menu-item', { active: activeMenu === item.id }]"
-        @click="activeMenu = item.id"
-      >
-        <span class="icon">{{ item.icon }}</span>
-        <span class="label">{{ item.label }}</span>
-      </div>
-    </nav>
+
+    <el-menu
+      :default-active="activeMenu"
+      class="sidebar-menu"
+      @select="handleMenuSelect"
+    >
+      <el-menu-item index="home">
+        <el-icon><HomeFilled /></el-icon>
+        <span>首页</span>
+      </el-menu-item>
+
+      <el-menu-item index="market">
+        <el-icon><TrendCharts /></el-icon>
+        <span>行情</span>
+      </el-menu-item>
+
+      <el-menu-item index="trade">
+        <el-icon><Coin /></el-icon>
+        <span>交易</span>
+      </el-menu-item>
+
+      <el-menu-item index="assets">
+        <el-icon><Wallet /></el-icon>
+        <span>资产</span>
+      </el-menu-item>
+
+      <el-menu-item index="orders">
+        <el-icon><Document /></el-icon>
+        <span>订单</span>
+      </el-menu-item>
+
+      <el-menu-item index="settings">
+        <el-icon><Setting /></el-icon>
+        <span>设置</span>
+      </el-menu-item>
+    </el-menu>
   </div>
 </template>
 
 <script setup>
 import { ref } from 'vue'
+import { HomeFilled, TrendCharts, Coin, Wallet, Document, Setting } from '@element-plus/icons-vue'
 
 const activeMenu = ref('home')
 
-const menuItems = [
-  { id: 'home', label: '首页', icon: '🏠' },
-  { id: 'stocks', label: '股票列表', icon: '📊' },
-  { id: 'market', label: '市场行情', icon: '📈' },
-  { id: 'analysis', label: '数据分析', icon: '🔍' },
-  { id: 'settings', label: '设置', icon: '⚙️' }
-]
+const handleMenuSelect = (index) => {
+  activeMenu.value = index
+  console.log('Selected menu:', index)
+}
 </script>
 
 <style scoped>
 .sidebar {
-  width: 220px;
-  background-color: #2c3e50;
-  color: white;
+  width: 250px;
+  background-color: #fff;
+  border-right: 1px solid #e4e7ed;
   display: flex;
   flex-direction: column;
+  height: 100vh;
 }
 
 .logo {
-  padding: 24px 20px;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
-}
-
-.logo h2 {
-  font-size: 24px;
-  font-weight: 600;
-}
-
-.menu {
-  flex: 1;
-  padding: 20px 0;
-}
-
-.menu-item {
   display: flex;
   align-items: center;
-  padding: 14px 20px;
-  cursor: pointer;
-  transition: all 0.3s;
-  color: rgba(255, 255, 255, 0.7);
+  gap: 12px;
+  padding: 20px;
+  border-bottom: 1px solid #e4e7ed;
 }
 
-.menu-item:hover {
-  background-color: rgba(255, 255, 255, 0.1);
-  color: white;
-}
-
-.menu-item.active {
-  background-color: #3498db;
-  color: white;
-}
-
-.icon {
+.logo-text {
   font-size: 20px;
-  margin-right: 12px;
+  font-weight: bold;
+  color: #303133;
 }
 
-.label {
-  font-size: 15px;
+.sidebar-menu {
+  flex: 1;
+  border-right: none;
+}
+
+.el-menu-item {
+  height: 56px;
+  line-height: 56px;
 }
 </style>
