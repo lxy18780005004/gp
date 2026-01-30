@@ -10,48 +10,41 @@
       class="sidebar-menu"
       @select="handleMenuSelect"
     >
-      <el-menu-item index="home">
-        <el-icon><HomeFilled /></el-icon>
-        <span>首页</span>
-      </el-menu-item>
-
-      <el-menu-item index="market">
+      <el-menu-item index="/">
         <el-icon><TrendCharts /></el-icon>
-        <span>行情</span>
+        <span>K线图</span>
       </el-menu-item>
 
-      <el-menu-item index="trade">
-        <el-icon><Coin /></el-icon>
-        <span>交易</span>
-      </el-menu-item>
-
-      <el-menu-item index="assets">
-        <el-icon><Wallet /></el-icon>
-        <span>资产</span>
-      </el-menu-item>
-
-      <el-menu-item index="orders">
-        <el-icon><Document /></el-icon>
-        <span>订单</span>
-      </el-menu-item>
-
-      <el-menu-item index="settings">
-        <el-icon><Setting /></el-icon>
-        <span>设置</span>
+      <el-menu-item index="/statistics">
+        <el-icon><DataAnalysis /></el-icon>
+        <span>统计</span>
       </el-menu-item>
     </el-menu>
   </div>
 </template>
 
 <script setup>
-import { ref } from 'vue'
-import { HomeFilled, TrendCharts, Coin, Wallet, Document, Setting } from '@element-plus/icons-vue'
+import { ref, watch } from 'vue'
+import { TrendCharts, DataAnalysis } from '@element-plus/icons-vue'
 
-const activeMenu = ref('home')
+const props = defineProps({
+  activeRoute: {
+    type: String,
+    default: '/'
+  }
+})
+
+const emit = defineEmits(['navigate'])
+
+const activeMenu = ref(props.activeRoute)
+
+watch(() => props.activeRoute, (newVal) => {
+  activeMenu.value = newVal
+})
 
 const handleMenuSelect = (index) => {
   activeMenu.value = index
-  console.log('Selected menu:', index)
+  emit('navigate', index)
 }
 </script>
 

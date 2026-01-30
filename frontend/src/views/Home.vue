@@ -202,12 +202,14 @@
 
 <script setup>
 import { ref, onMounted, nextTick, onBeforeUnmount } from 'vue'
+import { useRoute } from 'vue-router'
 import { Search, Upload, Delete, FullScreen, ZoomIn } from '@element-plus/icons-vue'
 import { ElMessage } from 'element-plus'
 import * as echarts from 'echarts'
 import axios from 'axios'
 import * as XLSX from 'xlsx'
 
+const route = useRoute()
 const API_BASE_URL = 'http://localhost:5000'
 
 const queryForm = ref({
@@ -355,14 +357,16 @@ const processKlineData = (data) => {
   const categoryData = []
   const values = []
   const volumes = []
+  const rawData = [] // 保存原始数据
 
   data.forEach(item => {
     categoryData.push(item.date)
     values.push([item.open, item.close, item.low, item.high])
     volumes.push([categoryData.length - 1, item.vol, item.change > 0 ? 1 : -1])
+    rawData.push(item) // 保存完整的原始数据
   })
 
-  return { categoryData, values, volumes }
+  return { categoryData, values, volumes, rawData }
 }
 
 // 计算移动平均线
@@ -384,7 +388,7 @@ const calculateMA = (data, dayCount) => {
 
 // 渲染单个图表
 const renderChart = (chartInstance, klineData, stockName) => {
-  const { categoryData, values, volumes } = processKlineData(klineData)
+  const { categoryData, values, volumes, rawData } = processKlineData(klineData)
 
   const upColor = '#ec0000'
   const startColor = '#188ffe'
@@ -403,37 +407,46 @@ const renderChart = (chartInstance, klineData, stockName) => {
         type: 'cross'
       },
       formatter: function(params) {
+        const dataIndex = params[0].dataIndex
+        const currentData = rawData[dataIndex] // 获取当前日期的原始数据
+        
         let result = params[0].name + '<br/>'
 
         // 找到K线数据
         let klineParam = params.find(p => p.seriesName === 'K线')
-        if (klineParam) {
+        if (klineParam && currentData) {
           const open = klineParam.data[1]
           const close = klineParam.data[2]
           const low = klineParam.data[3]
           const high = klineParam.data[4]
 
-          // 计算涨跌幅
-          const change = close - open
-          const changePct = open !== 0 ? ((change / open) * 100).toFixed(2) : 0
+          // 使用后端返回的涨跌额和涨跌幅
+          const change = currentData.change || 0
+          const changePct = currentData.change_pct || 0
           const changeColor = change >= 0 ? upColor : downColor
           const changeSymbol = change >= 0 ? '+' : ''
 
-          // 计算从鼠标悬停日期（开盘价）到当前日期（最后一天收盘价）的累计涨幅
-          if (chartData && values.length > 0) {
-            const lastClose = values[values.length - 1][1] // 最后一天的收盘价
-            const totalChange = open !== 0 ? (((lastClose - open) / open) * 100).toFixed(2) : 0
+          // 计算从鼠标悬停日期到最后一天的累计涨幅
+          // 使用后端返回的数据累加计算
+          if (chartData && rawData.length > 0) {
+            // 从当前索引到最后一天，累加涨跌幅
+            let totalChangePct = 0
+            for (let i = dataIndex; i < rawData.length; i++) {
+              const dayChangePct = rawData[i].change_pct || 0
+              // 使用复利公式：(1 + r1) * (1 + r2) * ... - 1
+              totalChangePct = ((1 + totalChangePct / 100) * (1 + dayChangePct / 100) - 1) * 100
+            }
 
             // 更新图表的悬停信息
             chartData.hoverInfo = {
               date: params[0].name,
-              totalChange: totalChange
+              totalChange: totalChangePct.toFixed(2)
             }
           }
 
           // 涨跌信息显示在顶部
           result += `<span style="color: ${changeColor}; font-weight: bold; font-size: 14px;">涨跌额: ${changeSymbol}${change.toFixed(2)}</span><br/>`
-          result += `<span style="color: ${changeColor}; font-weight: bold; font-size: 14px;">涨跌幅: ${changeSymbol}${changePct}%</span><br/>`
+          result += `<span style="color: ${changeColor}; font-weight: bold; font-size: 14px;">涨跌幅: ${changeSymbol}${changePct.toFixed(2)}%</span><br/>`
 
           // 价格信息（开盘和收盘带颜色）
           result += `开盘: <span style="color: ${startColor}; font-weight: bold;">${open}</span><br/>`
@@ -783,6 +796,24 @@ const handleResize = () => {
 
 onMounted(() => {
   window.addEventListener('resize', handleResize)
+  
+  // 检查URL参数，如果有则自动加载
+  if (route.query.codes && route.query.autoLoad === 'true') {
+    queryForm.value.ts_code = route.query.codes
+    if (route.query.start_date) {
+      queryForm.value.start_date = route.query.start_date
+      dateRange.value[0] = route.query.start_date
+    }
+    if (route.query.end_date) {
+      queryForm.value.end_date = route.query.end_date
+      dateRange.value[1] = route.query.end_date
+    }
+    
+    // 延迟执行查询，确保组件完全加载
+    nextTick(() => {
+      fetchKlineData()
+    })
+  }
 })
 
 onBeforeUnmount(() => {

@@ -1,15 +1,37 @@
 <template>
   <div class="app-container">
-    <Sidebar />
+    <Sidebar @navigate="handleNavigate" :active-route="currentRoute" />
     <div class="main-content">
-      <Home />
+      <StatusBar />
+      <div class="content-wrapper">
+        <router-view />
+      </div>
     </div>
   </div>
 </template>
 
 <script setup>
+import { ref, onMounted } from 'vue'
+import { useRouter, useRoute } from 'vue-router'
 import Sidebar from './components/Sidebar.vue'
-import Home from './views/Home.vue'
+import StatusBar from './components/StatusBar.vue'
+
+const router = useRouter()
+const route = useRoute()
+const currentRoute = ref('/')
+
+const handleNavigate = (path) => {
+  router.push(path)
+}
+
+onMounted(() => {
+  currentRoute.value = route.path
+})
+
+// 监听路由变化
+router.afterEach((to) => {
+  currentRoute.value = to.path
+})
 </script>
 
 <style scoped>
@@ -21,7 +43,14 @@ import Home from './views/Home.vue'
 
 .main-content {
   flex: 1;
-  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
   background-color: #f5f5f5;
+  overflow: hidden;
+}
+
+.content-wrapper {
+  flex: 1;
+  overflow-y: auto;
 }
 </style>
